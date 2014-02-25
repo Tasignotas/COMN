@@ -1,8 +1,9 @@
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.net.*;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.Path;
 import java.util.Arrays;
+
 
 class Sender1 {
 
@@ -11,15 +12,18 @@ class Sender1 {
 	
 	
 	private static void sendFile(int portNum, String fileName) throws Exception {
-		byte[] data;
 		short seqNum = 0;
 		int end;
-		Path path = Paths.get(fileName);
-		data = Files.readAllBytes(path);
+		File file = new File("testfile.jpg");
+	    byte[] data = new byte[(int) file.length()];
+	    DataInputStream dis = new DataInputStream(new FileInputStream(file));
+	    dis.readFully(data);
+	    dis.close();
 		socket = new DatagramSocket();
 		do {
 			end = seqNum * PACKET_SIZE + Math.min(PACKET_SIZE, data.length - seqNum * PACKET_SIZE);
 			RDTSend(Arrays.copyOfRange(data, seqNum * PACKET_SIZE, end), portNum, end == data.length, seqNum);
+			Thread.sleep(10);
 			seqNum++;
 		} while (seqNum * PACKET_SIZE < data.length);
 	}

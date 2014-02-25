@@ -8,16 +8,20 @@ public class Receiver1 {
 	
 	
 	private static void receiveFile(int portNum, String fileName) throws Exception {
-		// Open the output file:
+		byte[] buf;
+		DatagramPacket packet;
+		// Create the output file:
 		FileOutputStream out = new FileOutputStream(fileName);
 		// Open the socket to get the data coming to the specified port:
 		DatagramSocket socket = new DatagramSocket(portNum);
-		byte[] buf = new byte[1024];
-		DatagramPacket packet = new DatagramPacket(buf, buf.length);
+		int total = 0;
 		do {
+			buf = new byte[1024];
+			packet = new DatagramPacket(buf, buf.length);
 			socket.receive(packet);
 			out.write(packet.getData());
-		} while (packet.getData()[0] != -1);
+			System.out.println(total);
+		} while (total++ < 2049);
 		socket.close();
 		out.close();
 	}
