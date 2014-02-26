@@ -11,16 +11,14 @@ public class Sender2 {
 	public final static int MESSAGE_SIZE = 1021; // The size of the meaningful part of the data part
 	public final static int FEEDBACK_SIZE = 2; // The size of the feedback (Ack/Nak) message
 
-	private DatagramSocket sendingSocket, receivingSocket;
-	private int sendingToPortNum, receivingAtPortNum;
+	private DatagramSocket socket;
+	private int portNumber;
 	private short sendPacketSeqNum;
 	
-	public Sender2(int sendPortNum, int retryTimeout) throws Exception {
-		this.sendingToPortNum = sendPortNum;
-		this.receivingAtPortNum = 69;
-		this.sendingSocket = new DatagramSocket();
-		this.receivingSocket = new DatagramSocket(this.receivingAtPortNum);
-		this.receivingSocket.setSoTimeout(retryTimeout);
+	public Sender2(int portNum, int retryTimeout) throws Exception {
+		this.portNumber = portNum;
+		this.socket = new DatagramSocket();
+		this.socket.setSoTimeout(retryTimeout);
 		this.sendPacketSeqNum = 0;
 	}
 		
@@ -31,8 +29,7 @@ public class Sender2 {
 	    	sendNextPacket(constructPacket(fileData), this.sendPacketSeqNum);
 			this.sendPacketSeqNum++;
 		} while (this.sendPacketSeqNum * MESSAGE_SIZE < fileData.length);
-		this.sendingSocket.close();
-		this.receivingSocket.close();
+		this.socket.close();
 	}
 	
 	private byte[] readData(String fileName) throws Exception {
@@ -60,7 +57,7 @@ public class Sender2 {
 		// Adding headers that encode the end of file and the packet sequence number:
 		encodeSeqNumber(packetData, this.sendPacketSeqNum);
 		encodeEndOfFile(packetData, (end == data.length));
-		return new DatagramPacket(packetData, packetData.length, InetAddress.getByName("localhost"), this.sendingToPortNum);
+		return new DatagramPacket(packetData, packetData.length, InetAddress.getByName("localhost"), this.portNumber);
 	}
 	
 	private void sendNextPacket(DatagramPacket packet, int sendSeqNum) throws Exception {
@@ -68,11 +65,11 @@ public class Sender2 {
 		byte[] buf;
 		DatagramPacket receivedPacket;
 		do {
-			this.sendingSocket.send(packet);
+			this.socket.send(packet);
 			try {
 				buf = new byte[FEEDBACK_SIZE];
 				receivedPacket = new DatagramPacket(buf, buf.length);
-				this.receivingSocket.receive(receivedPacket);
+				this.socket.receive(receivedPacket);
 				if (decodeSeqNumber(receivedPacket.getData()) == sendSeqNum)
 					break;
 			}

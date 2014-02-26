@@ -8,14 +8,12 @@ import java.util.Arrays;
 
 public class Receiver2 {
 	
-	private DatagramSocket receivingSocket, sendingSocket;
-	private int receivingAtPortNum, sendingToPortNum, receivingPacketSeqNum;
+	private DatagramSocket socket;
+	private int portNumber, receivingPacketSeqNum;
 	
 	public Receiver2(int portNum) throws Exception {
-		this.receivingAtPortNum = portNum;
-		this.sendingToPortNum = 69;
-		this.receivingSocket = new DatagramSocket(this.receivingAtPortNum);
-		this.sendingSocket = new DatagramSocket();
+		this.portNumber = portNum;
+		this.socket = new DatagramSocket(this.portNumber);
 	}
 	
 	private void receiveFile(String fileName) throws Exception {
@@ -31,7 +29,7 @@ public class Receiver2 {
 			this.receivingPacketSeqNum++;
 			endOfFile = Sender2.decodeEndOfFile(packetData);
 		}
-		this.receivingSocket.close();
+		this.socket.close();
 		out.close();
 	}
 		
@@ -39,17 +37,18 @@ public class Receiver2 {
 		while (true) {
 			byte[] buf = new byte[Sender2.DATA_SIZE];
 			DatagramPacket receivedPacket = new DatagramPacket(buf, buf.length);
-			this.receivingSocket.receive(receivedPacket);
-			sendAck(Sender2.decodeSeqNumber(receivedPacket.getData()));
+			this.socket.receive(receivedPacket);
+			Thread.sleep(10);
+			sendAck(Sender2.decodeSeqNumber(receivedPacket.getData()), receivedPacket.getPort());
 			if (Sender2.decodeSeqNumber(receivedPacket.getData()) == this.receivingPacketSeqNum)
 				return receivedPacket.getData();
 		}
 	}
 	
-	private void sendAck(short seqNum) throws Exception {
+	private void sendAck(short seqNum, int senderPort) throws Exception {
 		byte[] packetData = new byte[Sender2.FEEDBACK_SIZE];
 		Sender2.encodeSeqNumber(packetData, seqNum);
-		this.sendingSocket.send(new DatagramPacket(packetData, packetData.length, InetAddress.getByName("localhost"), this.sendingToPortNum));
+		this.socket.send(new DatagramPacket(packetData, packetData.length, InetAddress.getByName("localhost"), senderPort));
 	}
 	
 	public static void main(String[] args) throws Exception {
