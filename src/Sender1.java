@@ -1,41 +1,55 @@
+/* Ignotas Sulzenko 1137931 */
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.net.*;
-import java.util.Arrays;
 
 
-class Sender1 {
+public class Sender1 {
 
-	private final static int PACKET_SIZE = 1024;
-	private static DatagramSocket socket;
-	
+	public final static int DATA_SIZE = 1024; // The size of the entire data part of the packet
+	public final static int MESSAGE_SIZE = 1021; // The size of the meaningful part of the data part 
 	
 	private static void sendFile(int portNum, String fileName) throws Exception {
+		// Initialising variables, preparing ourselves for sending the data:
 		short seqNum = 0;
-		int end;
-		File file = new File("testfile.jpg");
-	    byte[] data = new byte[(int) file.length()];
+		byte[] packetData;
+		DatagramSocket socket = new DatagramSocket();
+		// Reading the data:
+		File file = new File(fileName);
+	    byte[] fileData = new byte[(int) file.length()];
 	    DataInputStream dis = new DataInputStream(new FileInputStream(file));
-	    dis.readFully(data);
+	    dis.readFully(fileData);
 	    dis.close();
-		socket = new DatagramSocket();
-		do {
-			end = seqNum * PACKET_SIZE + Math.min(PACKET_SIZE, data.length - seqNum * PACKET_SIZE);
-			RDTSend(Arrays.copyOfRange(data, seqNum * PACKET_SIZE, end), portNum, end == data.length, seqNum);
+	    do {
+	    	// Composing packets and sending them:
+	    	packetData = constructPacketData(seqNum, fileData);
+			DatagramPacket packet = new DatagramPacket(packetData, packetData.length, InetAddress.getByName("localhost"), portNum);
+			socket.send(packet);
 			Thread.sleep(10);
 			seqNum++;
-		} while (seqNum * PACKET_SIZE < data.length);
+		} while (seqNum * MESSAGE_SIZE < fileData.length);
+		socket.close();
 	}
 	
-	
-	private static void RDTSend(byte[] chunk, int portNum, boolean endOfFile, short seqNum) throws Exception {
-		DatagramPacket packet = new DatagramPacket(chunk, chunk.length, InetAddress.getByName("localhost"), portNum);
-		socket.send(packet);
-		if (endOfFile)
-			socket.close();
+	private static void copyRange(byte[] target, int targetOffset, byte[] origin, int from, int to) {
+		for (int x = from; x < to; x++) {
+			target[targetOffset + (x - from)] = origin[x];
+		}
 	}
 	
+	private static byte[] constructPacketData(int seqNum, byte[] data) {
+		byte[] packetData = new byte[DATA_SIZE];
+		int beginning = seqNum * MESSAGE_SIZE;
+		int end = beginning + Math.min(MESSAGE_SIZE, data.length - beginning);
+		// Adding headers that encode the end of file and the packet sequence number:
+		packetData[0] = (end == data.length) ? (byte) 0x1 : (byte) 0x0;
+		packetData[1] = (byte)(seqNum & 0xff);
+		packetData[2] = (byte)((seqNum >> 8) & 0xff);
+		// Adding the main content:
+		copyRange(packetData, 3, data, beginning, end);
+		return packetData;
+	}
 	
 	public static void main(String[] args) throws Exception {
 		sendFile(Integer.parseInt(args[0]), args[1]);
