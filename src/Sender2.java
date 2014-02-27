@@ -24,11 +24,13 @@ public class Sender2 {
 		
 	private void sendFile(String fileName) throws Exception {
 		byte[] fileData = readData(fileName);
+		long startTime = System.currentTimeMillis();
 	    do {
 	    	// Composing packets and sending them:
 	    	sendNextPacket(constructPacket(fileData), this.sendPacketSeqNum);
 			this.sendPacketSeqNum++;
 		} while (this.sendPacketSeqNum * MESSAGE_SIZE < fileData.length);
+	    System.out.println("The transfer speed is: " + fileData.length / (System.currentTimeMillis() - startTime) + "kB/s");
 		this.socket.close();
 	}
 	
