@@ -30,7 +30,8 @@ public class Sender2 {
 	    	sendNextPacket(constructPacket(fileData), this.sendPacketSeqNum);
 			this.sendPacketSeqNum++;
 		} while (this.sendPacketSeqNum * MESSAGE_SIZE < fileData.length);
-	    System.out.println("The transfer speed is: " + ((fileData.length * 1024) / ((System.currentTimeMillis() - startTime) * 1000)) + "kB/s");
+	    long endTime = System.currentTimeMillis();
+	    System.out.println("The transfer speed is: " + ((fileData.length * 1024) / ((endTime - startTime) * 1000)) + "kB/s");
 		this.socket.close();
 	}
 	
