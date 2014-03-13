@@ -29,7 +29,7 @@ public class Sender3 {
 		short end;
 		long startTime = System.currentTimeMillis();
 	    do {
-	    	end = (short) Math.min(this.base + this.windowSize, Math.ceil(fileData.length/MESSAGE_SIZE));
+	    	end = (short) Math.min(this.base + this.windowSize, 1 + Math.ceil(fileData.length/MESSAGE_SIZE));
 	    	// Sending all of the packets that have to be sent and waiting for a response:
 	    	sendPackets(this.nextSeqNum, end, fileData);
 	    	System.out.println(this.nextSeqNum);
