@@ -5,34 +5,61 @@ import java.io.FileInputStream;
 import java.net.*;
 
 
-public class Sender2 {
+public class Sender3 {
 
 	public final static int DATA_SIZE = 1024; // The size of the entire data part of the packet
 	public final static int MESSAGE_SIZE = 1021; // The size of the meaningful part of the data part
 	public final static int FEEDBACK_SIZE = 2; // The size of the feedback (Ack/Nak) message
 
 	private DatagramSocket socket;
-	private int portNumber;
-	private short sendPacketSeqNum;
+	private int portNumber, windowSize;
+	private short base, nextSeqNum;
 	
-	public Sender2(int portNum, int retryTimeout) throws Exception {
+	public Sender3(int portNum, int retryTimeout, int windowSize) throws Exception {
 		this.portNumber = portNum;
+		this.windowSize = windowSize;
 		this.socket = new DatagramSocket();
 		this.socket.setSoTimeout(retryTimeout);
-		this.sendPacketSeqNum = 0;
+		this.base = 0;
+		this.nextSeqNum = 0;
 	}
 		
 	private void sendFile(String fileName) throws Exception {
 		byte[] fileData = readData(fileName);
+		short end;
 		long startTime = System.currentTimeMillis();
 	    do {
-	    	// Composing packets and sending them:
-	    	sendNextPacket(constructPacket(fileData), this.sendPacketSeqNum);
-			this.sendPacketSeqNum++;
-		} while (this.sendPacketSeqNum * MESSAGE_SIZE < fileData.length);
+	    	end = (short) Math.min(this.base + this.windowSize, Math.ceil(fileData.length/MESSAGE_SIZE));
+	    	// Sending all of the packets that have to be sent and waiting for a response:
+	    	sendPackets(this.nextSeqNum, end, fileData);
+		} while (this.base * MESSAGE_SIZE < fileData.length);
 	    long endTime = System.currentTimeMillis();
 	    System.out.println("The transfer speed is: " + ((fileData.length * 1024) / ((endTime - startTime) * 1000)) + "kB/s");
 		this.socket.close();
+	}
+	
+	private void sendPackets(short beg, short end, byte[] fileData) throws Exception {
+		DatagramPacket sendPacket;
+		byte[] buf;
+		short decodedNum;
+		DatagramPacket receivedPacket;
+		buf = new byte[FEEDBACK_SIZE];
+		receivedPacket = new DatagramPacket(buf, buf.length);
+		// Sending the packets:
+		for (short x = beg; x < end; x++) {
+			sendPacket = constructPacket(fileData, x);
+			this.socket.send(sendPacket);
+			this.nextSeqNum++;
+		}
+		try {
+			this.socket.receive(receivedPacket);
+			decodedNum = decodeSeqNumber(receivedPacket.getData());
+			if (decodedNum > this.base)
+				this.base = (short) (decodedNum + 1);
+		}
+		catch (SocketTimeoutException e) {
+			this.nextSeqNum = this.base;
+		}
 	}
 	
 	private byte[] readData(String fileName) throws Exception {
@@ -51,36 +78,18 @@ public class Sender2 {
 		}
 	}
 	
-	private DatagramPacket constructPacket(byte[] data) throws Exception {
+	private DatagramPacket constructPacket(byte[] data, short packetNum) throws Exception {
 		byte[] packetData = new byte[DATA_SIZE];
-		int beginning = this.sendPacketSeqNum * MESSAGE_SIZE;
+		int beginning = packetNum * MESSAGE_SIZE;
 		int end = beginning + Math.min(MESSAGE_SIZE, data.length - beginning);
 		// Adding the main content:
 		copyRange(packetData, 3, data, beginning, end);
 		// Adding headers that encode the end of file and the packet sequence number:
-		encodeSeqNumber(packetData, this.sendPacketSeqNum);
+		encodeSeqNumber(packetData, packetNum);
 		encodeEndOfFile(packetData, (end == data.length));
 		return new DatagramPacket(packetData, packetData.length, InetAddress.getByName("localhost"), this.portNumber);
 	}
 	
-	private void sendNextPacket(DatagramPacket packet, int sendSeqNum) throws Exception {
-		// Sends the packet until it is received at the other end:
-		byte[] buf;
-		DatagramPacket receivedPacket;
-		do {
-			buf = new byte[FEEDBACK_SIZE];
-			receivedPacket = new DatagramPacket(buf, buf.length);
-			this.socket.send(packet);
-			try {
-				this.socket.receive(receivedPacket);
-				if (decodeSeqNumber(receivedPacket.getData()) == sendSeqNum)
-					break;
-			}
-			catch (SocketTimeoutException e) {
-				continue;
-			}
-		} while (true);
-	}
 	
 	public static void encodeSeqNumber(byte[] message, short seqNum) {
 		// Encodes the sequence number to the first two bytes of the message:
@@ -104,7 +113,8 @@ public class Sender2 {
 		int portNum = Integer.parseInt(args[0]);
 		String fileName = args[1];
 		int retryTimeout = Integer.parseInt(args[2]);
-		Sender2 sender = new Sender2(portNum, retryTimeout);
+		int windowSize = Integer.parseInt(args[3]);
+		Sender3 sender = new Sender3(portNum, retryTimeout, windowSize);
 		sender.sendFile(fileName);
 	}
 	

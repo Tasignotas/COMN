@@ -9,14 +9,15 @@ import java.util.Arrays;
 public class Receiver2 {
 	
 	private DatagramSocket socket;
-	private int portNumber, receivingPacketSeqNum;
+	private int portNumber;
+	private short receivingPacketSeqNum;
 	
 	public Receiver2(int portNum) throws Exception {
 		this.portNumber = portNum;
 		this.socket = new DatagramSocket(this.portNumber);
 	}
 	
-	private void receiveFile(String fileName) throws Exception {
+	public void receiveFile(String fileName) throws Exception {
 		// Preparing ourselves for receiving packets:
 		this.receivingPacketSeqNum = 0;
 		byte[] packetData;
@@ -38,7 +39,6 @@ public class Receiver2 {
 			byte[] buf = new byte[Sender2.DATA_SIZE];
 			DatagramPacket receivedPacket = new DatagramPacket(buf, buf.length);
 			this.socket.receive(receivedPacket);
-			Thread.sleep(10);
 			sendAck(Sender2.decodeSeqNumber(receivedPacket.getData()), receivedPacket.getPort());
 			if (Sender2.decodeSeqNumber(receivedPacket.getData()) == this.receivingPacketSeqNum)
 				return receivedPacket.getData();
@@ -47,6 +47,8 @@ public class Receiver2 {
 	
 	private void sendAck(short seqNum, int senderPort) throws Exception {
 		byte[] packetData = new byte[Sender2.FEEDBACK_SIZE];
+		if (seqNum != this.receivingPacketSeqNum)
+			seqNum = (short) (this.receivingPacketSeqNum - 1);
 		Sender2.encodeSeqNumber(packetData, seqNum);
 		this.socket.send(new DatagramPacket(packetData, packetData.length, InetAddress.getByName("localhost"), senderPort));
 	}
