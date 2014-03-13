@@ -32,11 +32,9 @@ public class Sender3 {
 	    	end = (short) Math.min(this.base + this.windowSize, 1 + Math.ceil(fileData.length/MESSAGE_SIZE));
 	    	// Sending all of the packets that have to be sent and waiting for a response:
 	    	sendPackets(this.nextSeqNum, end, fileData);
-	    	System.out.println(this.nextSeqNum);
-	    	System.out.println(end);
 		} while (this.base * MESSAGE_SIZE < fileData.length);
 	    long endTime = System.currentTimeMillis();
-	    System.out.println("The transfer speed is: " + ((fileData.length * 1024) / ((endTime - startTime) * 1000)) + "kB/s");
+	    System.out.println("The transfer speed is: " + ((fileData.length * 1024) / ((startTime - endTime) * 1000)) + "kB/s");
 		this.socket.close();
 	}
 	
