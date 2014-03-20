@@ -25,7 +25,7 @@ public class Receiver1 {
 			seqNum = (short) ((packet.getData()[2] << 8) + (packet.getData()[1]&0xFF));
 			System.out.println(seqNum);
 			// Save the main message part to the file:
-			out.write(Arrays.copyOfRange(packet.getData(), Sender1.DATA_SIZE - Sender1.MESSAGE_SIZE, packet.getData().length));
+			out.write(Arrays.copyOfRange(packet.getData(), Sender1.DATA_SIZE - Sender1.MESSAGE_SIZE, packet.getLength()));
 		}
 		socket.close();
 		out.close();
