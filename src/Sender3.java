@@ -12,14 +12,14 @@ public class Sender3 {
 	public final static int FEEDBACK_SIZE = 2; // The size of the feedback (Ack/Nak) message
 
 	private DatagramSocket socket;
-	private int portNumber, windowSize;
+	private int portNumber, windowSize, retryTimeout;
 	private short base, nextSeqNum;
 	
 	public Sender3(int portNum, int retryTimeout, int windowSize) throws Exception {
 		this.portNumber = portNum;
 		this.windowSize = windowSize;
 		this.socket = new DatagramSocket();
-		this.socket.setSoTimeout(retryTimeout);
+		this.retryTimeout = retryTimeout;
 		this.base = 0;
 		this.nextSeqNum = 0;
 	}
@@ -41,6 +41,8 @@ public class Sender3 {
 	private void sendPackets(short beg, short end, byte[] fileData) throws Exception {
 		DatagramPacket sendPacket;
 		byte[] buf;
+		long startTime;
+		int timeLeft;
 		short decodedNum;
 		DatagramPacket receivedPacket;
 		buf = new byte[FEEDBACK_SIZE];
@@ -52,10 +54,18 @@ public class Sender3 {
 			this.nextSeqNum++;
 		}
 		try {
-			this.socket.receive(receivedPacket);
-			decodedNum = decodeSeqNumber(receivedPacket.getData());
-			if (decodedNum >= this.base)
-				this.base = (short) (decodedNum + 1);
+			startTime = System.currentTimeMillis();
+			timeLeft = (int) (startTime + this.retryTimeout - System.currentTimeMillis());
+			while (timeLeft > 0) {
+				this.socket.setSoTimeout(timeLeft);
+				this.socket.receive(receivedPacket);
+				decodedNum = decodeSeqNumber(receivedPacket.getData());
+				if (decodedNum >= this.base) {
+					this.base = (short) (decodedNum + 1);
+					return;
+				}
+				timeLeft = (int) (startTime + this.retryTimeout - System.currentTimeMillis());
+			}
 		}
 		catch (SocketTimeoutException e) {
 			this.nextSeqNum = this.base;
@@ -110,10 +120,10 @@ public class Sender3 {
 	}
 	
 	public static void main(String[] args) throws Exception {
-		int portNum = Integer.parseInt(args[0]);
-		String fileName = args[1];
-		int retryTimeout = Integer.parseInt(args[2]);
-		int windowSize = Integer.parseInt(args[3]);
+		int portNum = Integer.parseInt(args[1]);
+		String fileName = args[2];
+		int retryTimeout = Integer.parseInt(args[3]);
+		int windowSize = Integer.parseInt(args[4]);
 		Sender3 sender = new Sender3(portNum, retryTimeout, windowSize);
 		sender.sendFile(fileName);
 	}

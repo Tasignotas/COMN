@@ -12,14 +12,14 @@ public class Sender2 {
 	public final static int FEEDBACK_SIZE = 2; // The size of the feedback (Ack/Nak) message
 
 	private DatagramSocket socket;
-	private int portNumber;
+	private int portNumber, retryTimeout;
 	private short sendPacketSeqNum;
 	
 	public Sender2(int portNum, int retryTimeout) throws Exception {
 		this.portNumber = portNum;
 		this.socket = new DatagramSocket();
-		this.socket.setSoTimeout(retryTimeout);
 		this.sendPacketSeqNum = 0;
+		this.retryTimeout = retryTimeout;
 	}
 		
 	private void sendFile(String fileName) throws Exception {
@@ -67,14 +67,22 @@ public class Sender2 {
 		// Sends the packet until it is received at the other end:
 		byte[] buf;
 		DatagramPacket receivedPacket;
+		long startTime;
+		int timeLeft;
 		do {
 			buf = new byte[FEEDBACK_SIZE];
 			receivedPacket = new DatagramPacket(buf, buf.length);
 			this.socket.send(packet);
 			try {
-				this.socket.receive(receivedPacket);
-				if (decodeSeqNumber(receivedPacket.getData()) == sendSeqNum)
-					break;
+				startTime = System.currentTimeMillis();
+				timeLeft = (int) (startTime + this.retryTimeout - System.currentTimeMillis());
+				while (timeLeft > 0) {
+					this.socket.setSoTimeout(timeLeft);
+					this.socket.receive(receivedPacket);
+					if (decodeSeqNumber(receivedPacket.getData()) == sendSeqNum)
+						return;
+					timeLeft = (int) (startTime + this.retryTimeout - System.currentTimeMillis());
+				}
 			}
 			catch (SocketTimeoutException e) {
 				continue;
@@ -101,9 +109,9 @@ public class Sender2 {
 	}
 	
 	public static void main(String[] args) throws Exception {
-		int portNum = Integer.parseInt(args[0]);
-		String fileName = args[1];
-		int retryTimeout = Integer.parseInt(args[2]);
+		int portNum = Integer.parseInt(args[1]);
+		String fileName = args[2];
+		int retryTimeout = Integer.parseInt(args[3]);
 		Sender2 sender = new Sender2(portNum, retryTimeout);
 		sender.sendFile(fileName);
 	}

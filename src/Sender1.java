@@ -52,7 +52,7 @@ public class Sender1 {
 	}
 	
 	public static void main(String[] args) throws Exception {
-		sendFile(Integer.parseInt(args[0]), args[1]);
+		sendFile(Integer.parseInt(args[1]), args[2]);
 	}
 	
 }
