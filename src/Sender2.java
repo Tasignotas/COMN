@@ -12,13 +12,14 @@ public class Sender2 {
 	public final static int FEEDBACK_SIZE = 2; // The size of the feedback (Ack/Nak) message
 
 	private DatagramSocket socket;
-	private int portNumber, retryTimeout;
+	private int portNumber, retryTimeout, retransmissions;
 	private short sendPacketSeqNum;
 	
 	public Sender2(int portNum, int retryTimeout) throws Exception {
 		this.portNumber = portNum;
 		this.socket = new DatagramSocket();
 		this.sendPacketSeqNum = 0;
+		this.retransmissions = 0;
 		this.retryTimeout = retryTimeout;
 	}
 		
@@ -32,7 +33,8 @@ public class Sender2 {
 		} while (this.sendPacketSeqNum * MESSAGE_SIZE < fileData.length);
 	    long endTime = System.currentTimeMillis();
 	    System.out.println("The transfer speed is: " + ((fileData.length * 1024) / ((endTime - startTime) * 1000)) + "kB/s");
-		this.socket.close();
+		System.out.println("The total number of retransmissions is: " + this.retransmissions);
+	    this.socket.close();
 	}
 	
 	private byte[] readData(String fileName) throws Exception {
@@ -85,6 +87,7 @@ public class Sender2 {
 				}
 			}
 			catch (SocketTimeoutException e) {
+				this.retransmissions++;
 				continue;
 			}
 		} while (true);
