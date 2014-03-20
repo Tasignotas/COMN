@@ -24,14 +24,14 @@ public class Receiver2 {
 		boolean endOfFile = false;
 		FileOutputStream out = new FileOutputStream(fileName);
 		// We wait for a packet until the sender tells us that it's the end:
-		while (!endOfFile) {
+		while (true) {
 			packetData = receiveNextPacket();
 			out.write(Arrays.copyOfRange(packetData.getData(), Sender2.DATA_SIZE - Sender2.MESSAGE_SIZE, packetData.getLength()));
 			this.receivingPacketSeqNum++;
 			endOfFile = Sender2.decodeEndOfFile(packetData.getData());
+			if (endOfFile)
+				out.close();
 		}
-		this.socket.close();
-		out.close();
 	}
 		
 	private DatagramPacket receiveNextPacket() throws Exception {
