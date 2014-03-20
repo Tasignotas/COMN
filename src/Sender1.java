@@ -41,7 +41,6 @@ public class Sender1 {
 	private static byte[] constructPacketData(int seqNum, byte[] data) {
 		int beginning = seqNum * MESSAGE_SIZE;
 		int end = beginning + Math.min(MESSAGE_SIZE, data.length - beginning);
-		System.out.println(end - beginning + DATA_SIZE - MESSAGE_SIZE);
 		byte[] packetData = new byte[end-beginning + DATA_SIZE - MESSAGE_SIZE];
 		// Adding headers that encode the end of file and the packet sequence number:
 		packetData[0] = (end == data.length) ? (byte) 0x1 : (byte) 0x0;

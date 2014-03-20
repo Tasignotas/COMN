@@ -23,7 +23,6 @@ public class Receiver1 {
 			// Decode the headers in the packet data:
 			endOfFile = (packet.getData()[0] > 0) ? true : false;
 			seqNum = (short) ((packet.getData()[2] << 8) + (packet.getData()[1]&0xFF));
-			System.out.println(seqNum);
 			// Save the main message part to the file:
 			out.write(Arrays.copyOfRange(packet.getData(), Sender1.DATA_SIZE - Sender1.MESSAGE_SIZE, packet.getLength()));
 		}
