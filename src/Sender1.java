@@ -7,8 +7,8 @@ import java.net.*;
 
 public class Sender1 {
 
-	public final static int DATA_SIZE = 1024; // The size of the entire data part of the packet
-	public final static int MESSAGE_SIZE = 1021; // The size of the meaningful part of the data part 
+	public final static int DATA_SIZE = 1027; // The size of the entire data part of the packet
+	public final static int MESSAGE_SIZE = 1024; // The size of the meaningful part of the data part 
 	
 	private static void sendFile(int portNum, String fileName) throws Exception {
 		// Initialising variables, preparing ourselves for sending the data:
@@ -41,7 +41,7 @@ public class Sender1 {
 	private static byte[] constructPacketData(int seqNum, byte[] data) {
 		int beginning = seqNum * MESSAGE_SIZE;
 		int end = beginning + Math.min(MESSAGE_SIZE, data.length - beginning);
-		byte[] packetData = new byte[end-beginning];
+		byte[] packetData = new byte[end-beginning + 1];
 		// Adding headers that encode the end of file and the packet sequence number:
 		packetData[0] = (end == data.length) ? (byte) 0x1 : (byte) 0x0;
 		packetData[1] = (byte)(seqNum & 0xff);
