@@ -32,7 +32,7 @@ public class Sender2 {
 			this.sendPacketSeqNum++;
 		} while (this.sendPacketSeqNum * MESSAGE_SIZE < fileData.length);
 	    long endTime = System.currentTimeMillis();
-	    System.out.println("The transfer speed is: " + ((fileData.length * 1024) / ((endTime - startTime) * 1000)) + "kB/s");
+	    System.out.println("The transfer speed is: " + ((fileData.length / 1024) / ((endTime - startTime) / 1000)) + "kB/s");
 		System.out.println("The total number of retransmissions is: " + this.retransmissions);
 	    this.socket.close();
 	}
