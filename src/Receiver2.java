@@ -20,28 +20,28 @@ public class Receiver2 {
 	public void receiveFile(String fileName) throws Exception {
 		// Preparing ourselves for receiving packets:
 		this.receivingPacketSeqNum = 0;
-		byte[] packetData;
+		DatagramPacket packetData;
 		boolean endOfFile = false;
 		FileOutputStream out = new FileOutputStream(fileName);
 		// We wait for a packet until the sender tells us that it's the end:
 		while (!endOfFile) {
 			packetData = receiveNextPacket();
-			out.write(Arrays.copyOfRange(packetData, Sender2.DATA_SIZE - Sender2.MESSAGE_SIZE, packetData.length));
+			out.write(Arrays.copyOfRange(packetData.getData(), Sender2.DATA_SIZE - Sender2.MESSAGE_SIZE, packetData.getLength()));
 			this.receivingPacketSeqNum++;
-			endOfFile = Sender2.decodeEndOfFile(packetData);
+			endOfFile = Sender2.decodeEndOfFile(packetData.getData());
 		}
 		this.socket.close();
 		out.close();
 	}
 		
-	private byte[] receiveNextPacket() throws Exception {
+	private DatagramPacket receiveNextPacket() throws Exception {
 		while (true) {
 			byte[] buf = new byte[Sender2.DATA_SIZE];
 			DatagramPacket receivedPacket = new DatagramPacket(buf, buf.length);
 			this.socket.receive(receivedPacket);
 			sendAck(Sender2.decodeSeqNumber(receivedPacket.getData()), receivedPacket.getPort());
 			if (Sender2.decodeSeqNumber(receivedPacket.getData()) == this.receivingPacketSeqNum)
-				return receivedPacket.getData();
+				return receivedPacket;
 		}
 	}
 	
