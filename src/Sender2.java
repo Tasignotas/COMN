@@ -32,7 +32,7 @@ public class Sender2 {
 			this.sendPacketSeqNum++;
 		} while (this.sendPacketSeqNum * MESSAGE_SIZE < fileData.length);
 	    long endTime = System.currentTimeMillis();
-	    System.out.println("The transfer speed is: " + ((fileData.length / 1024) / ((endTime - startTime) / 1000)) + "kB/s");
+	    System.out.println("The transfer speed is: " + ((fileData.length / 1024) / ((endTime - startTime) / 1000.0)) + "kB/s");
 		System.out.println("The total number of retransmissions is: " + this.retransmissions);
 	    this.socket.close();
 	}
@@ -75,12 +75,14 @@ public class Sender2 {
 			buf = new byte[FEEDBACK_SIZE];
 			receivedPacket = new DatagramPacket(buf, buf.length);
 			this.socket.send(packet);
+			// We try to get an Ack, but if we don't get it within the retryTimeout we resend:
 			try {
 				startTime = System.currentTimeMillis();
 				timeLeft = (int) (startTime + this.retryTimeout - System.currentTimeMillis());
 				while (timeLeft > 0) {
 					this.socket.setSoTimeout(timeLeft);
 					this.socket.receive(receivedPacket);
+					// If we get an ack for the packet that we've just sent, we return:
 					if (decodeSeqNumber(receivedPacket.getData()) == sendSeqNum)
 						return;
 					timeLeft = (int) (startTime + this.retryTimeout - System.currentTimeMillis());

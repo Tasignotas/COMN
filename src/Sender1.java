@@ -26,7 +26,7 @@ public class Sender1 {
 	    	packetData = constructPacketData(seqNum, fileData);
 			DatagramPacket packet = new DatagramPacket(packetData, packetData.length, InetAddress.getByName("localhost"), portNum);
 			socket.send(packet);
-			Thread.sleep(10);
+			Thread.sleep(2);
 			seqNum++;
 		} while (seqNum * MESSAGE_SIZE < fileData.length);
 		socket.close();

@@ -26,6 +26,7 @@ public class Receiver1 {
 			// Save the main message part to the file:
 			out.write(Arrays.copyOfRange(packet.getData(), Sender1.DATA_SIZE - Sender1.MESSAGE_SIZE, packet.getLength()));
 		}
+		System.out.printf("Received the file %s\n", fileName);
 		socket.close();
 		out.close();
 	}

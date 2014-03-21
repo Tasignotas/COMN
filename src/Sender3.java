@@ -34,7 +34,7 @@ public class Sender3 {
 	    	sendPackets(this.nextSeqNum, end, fileData);
 		} while (this.base * MESSAGE_SIZE < fileData.length);
 	    long endTime = System.currentTimeMillis();
-	    System.out.println("The transfer speed is: " + ((fileData.length / 1024) / ((endTime - startTime) / 1000)) + "kB/s");
+	    System.out.println("The transfer speed is: " + ((fileData.length / 1024) / ((endTime - startTime) / 1000.0)) + "kB/s");
 		this.socket.close();
 	}
 	
@@ -47,13 +47,15 @@ public class Sender3 {
 		DatagramPacket receivedPacket;
 		buf = new byte[FEEDBACK_SIZE];
 		receivedPacket = new DatagramPacket(buf, buf.length);
-		// Sending the packets:
+		// Sending the new packets:
 		for (short x = beg; x < end; x++) {
 			sendPacket = constructPacket(fileData, x);
 			this.socket.send(sendPacket);
 			this.nextSeqNum++;
 		}
 		try {
+			// We try to receive an ack for any of the packets in the current window.
+			// If we get it, we advance the sending window, if not, we resend everything:
 			startTime = System.currentTimeMillis();
 			timeLeft = (int) (startTime + this.retryTimeout - System.currentTimeMillis());
 			while (timeLeft > 0) {
@@ -68,6 +70,8 @@ public class Sender3 {
 			}
 		}
 		catch (SocketTimeoutException e) {
+			// By setting the nextSeqNum to the base we make the sender
+			// resend all of the packets in the window during the next iteration:
 			this.nextSeqNum = this.base;
 		}
 	}

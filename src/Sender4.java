@@ -10,11 +10,12 @@ public class Sender4 {
 
 	public final static int DATA_SIZE = 1027; // The size of the entire data part of the packet
 	public final static int MESSAGE_SIZE = 1024; // The size of the meaningful part of the data part
-	public final static int FEEDBACK_SIZE = 2; // The size of the feedback (Ack/Nak) message
+	public final static int FEEDBACK_SIZE = 2; // The size of the feedback (Ack) message
 
 	private DatagramSocket socket;
 	private int portNumber, windowSize, retryTimeout;
 	private short base, nextSeqNum;
+	// A hashmap that stores the timeout time for each non-ack'ed packet:
 	private HashMap<Short, Long> packetTimeouts;
 	
 	public Sender4(int portNum, int retryTimeout, int windowSize) throws Exception {
@@ -37,7 +38,7 @@ public class Sender4 {
 	    	sendPackets(this.nextSeqNum, end, fileData);
 		} while (this.base * MESSAGE_SIZE < fileData.length);
 	    long endTime = System.currentTimeMillis();
-	    System.out.println("The transfer speed is: " + ((fileData.length / 1024) / ((endTime - startTime) / 1000)) + "kB/s");
+	    System.out.println("The transfer speed is: " + ((fileData.length / 1024) / ((endTime - startTime) / 1000.0)) + "kB/s");
 		this.socket.close();
 	}
 	
@@ -50,14 +51,17 @@ public class Sender4 {
 		DatagramPacket receivedPacket;
 		buf = new byte[FEEDBACK_SIZE];
 		receivedPacket = new DatagramPacket(buf, buf.length);
-		// Sending the packets:
+		// Sending all of the new packets:
 		for (short x = beg; x < end; x++) {
 			sendPacket = constructPacket(fileData, x);
 			this.socket.send(sendPacket);
+			// Recording the send time:
 			this.packetTimeouts.put(x, System.currentTimeMillis() + this.retryTimeout);
 			this.nextSeqNum++;
 		}
 		try {
+			// We get the earliest timeout, because that's the maximum amount of time
+			// we should be waiting for an Ack without resending:
 			earliestTimeout = getEarliestTimeout();
 			currentTime = System.currentTimeMillis();
 			timeLeft = (int) (earliestTimeout - currentTime);
@@ -65,11 +69,14 @@ public class Sender4 {
 				this.socket.setSoTimeout(timeLeft);
 				this.socket.receive(receivedPacket);
 				decodedNum = decodeSeqNumber(receivedPacket.getData());
-				this.packetTimeouts.remove(decodedNum);
+				// We remove the received packet from the non-Acked package hashmap:
+				this.packetTimeouts.remove(decodedNum); 
 				if (decodedNum == this.base) {
+					// We move the base to the latest un-Ack'ed package:
 					while (this.packetTimeouts.get(this.base) == null && this.base < this.nextSeqNum) {
 						this.base++;
 					}
+					// We return from the method so that we could send some new packets:
 					return;
 				}
 				earliestTimeout = getEarliestTimeout();
@@ -93,6 +100,7 @@ public class Sender4 {
 	}
 	
 	private void resendTimeoutPackets(byte[] fileData) throws Exception{
+		// We resend each un-ack'ed packet if it timed out:
 		DatagramPacket sendPacket;
 		for(Short key : this.packetTimeouts.keySet()) {
 			if (this.packetTimeouts.get(key) <= System.currentTimeMillis()) {
