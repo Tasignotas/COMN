@@ -5,7 +5,6 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Set;
 
 
 public class Receiver4 {
@@ -27,15 +26,13 @@ public class Receiver4 {
 	public void receiveFile(String fileName) throws Exception {
 		// Preparing ourselves for receiving packets:
 		boolean endOfFile = false;
-		Set<Short> keys;
 		FileOutputStream out = new FileOutputStream(fileName);
 		// We wait for a packet until the sender tells us that it's the end:
 		while (true) {
 			// We keep on receiving new packets until an in order packet arrives:
 			receiveNewPackets();
 			// When we get the in order packet, we write as much data as we can:
-			keys = this.packetDataBuf.keySet();
-			while (keys.contains(this.base)) {
+			while (this.packetDataBuf.containsKey(this.base)) {
 				endOfFile = Sender4.decodeEndOfFile(this.packetDataBuf.get(this.base).getData());
 				out.write(Arrays.copyOfRange(this.packetDataBuf.get(this.base).getData(), Sender4.DATA_SIZE - Sender4.MESSAGE_SIZE, this.packetDataBuf.get(this.base).getLength()));
 				this.base++;
