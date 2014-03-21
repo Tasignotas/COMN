@@ -3,23 +3,26 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.net.*;
+import java.util.HashMap;
 
 
 public class Sender4 {
 
-	public final static int DATA_SIZE = 1024; // The size of the entire data part of the packet
-	public final static int MESSAGE_SIZE = 1021; // The size of the meaningful part of the data part
+	public final static int DATA_SIZE = 1027; // The size of the entire data part of the packet
+	public final static int MESSAGE_SIZE = 1024; // The size of the meaningful part of the data part
 	public final static int FEEDBACK_SIZE = 2; // The size of the feedback (Ack/Nak) message
 
 	private DatagramSocket socket;
 	private int portNumber, windowSize, retryTimeout;
 	private short base, nextSeqNum;
+	private HashMap<Short, Long> packetTimeouts;
 	
 	public Sender4(int portNum, int retryTimeout, int windowSize) throws Exception {
 		this.portNumber = portNum;
 		this.windowSize = windowSize;
 		this.socket = new DatagramSocket();
 		this.retryTimeout = retryTimeout;
+		this.packetTimeouts = new HashMap<Short, Long>();
 		this.base = 0;
 		this.nextSeqNum = 0;
 	}
@@ -34,14 +37,14 @@ public class Sender4 {
 	    	sendPackets(this.nextSeqNum, end, fileData);
 		} while (this.base * MESSAGE_SIZE < fileData.length);
 	    long endTime = System.currentTimeMillis();
-	    System.out.println("The transfer speed is: " + ((fileData.length * 1024) / ((startTime - endTime) * 1000)) + "kB/s");
+	    System.out.println("The transfer speed is: " + ((fileData.length / 1024) / ((endTime - startTime) / 1000)) + "kB/s");
 		this.socket.close();
 	}
 	
 	private void sendPackets(short beg, short end, byte[] fileData) throws Exception {
 		DatagramPacket sendPacket;
 		byte[] buf;
-		long startTime;
+		long currentTime, earliestTimeout;
 		int timeLeft;
 		short decodedNum;
 		DatagramPacket receivedPacket;
@@ -51,24 +54,52 @@ public class Sender4 {
 		for (short x = beg; x < end; x++) {
 			sendPacket = constructPacket(fileData, x);
 			this.socket.send(sendPacket);
+			this.packetTimeouts.put(x, System.currentTimeMillis() + this.retryTimeout);
 			this.nextSeqNum++;
 		}
 		try {
-			startTime = System.currentTimeMillis();
-			timeLeft = (int) (startTime + this.retryTimeout - System.currentTimeMillis());
+			earliestTimeout = getEarliestTimeout();
+			currentTime = System.currentTimeMillis();
+			timeLeft = (int) (earliestTimeout - currentTime);
 			while (timeLeft > 0) {
 				this.socket.setSoTimeout(timeLeft);
 				this.socket.receive(receivedPacket);
 				decodedNum = decodeSeqNumber(receivedPacket.getData());
-				if (decodedNum >= this.base) {
-					this.base = (short) (decodedNum + 1);
+				this.packetTimeouts.remove(decodedNum);
+				if (decodedNum == this.base) {
+					while (this.packetTimeouts.get(this.base) == null && this.base < this.nextSeqNum) {
+						this.base++;
+					}
 					return;
 				}
-				timeLeft = (int) (startTime + this.retryTimeout - System.currentTimeMillis());
+				earliestTimeout = getEarliestTimeout();
+				currentTime = System.currentTimeMillis();
+				timeLeft = (int) (earliestTimeout - currentTime);
 			}
+			resendTimeoutPackets(fileData);
 		}
 		catch (SocketTimeoutException e) {
-			this.nextSeqNum = this.base;
+			resendTimeoutPackets(fileData);
+		}
+	}
+	
+	private long getEarliestTimeout() {
+		Long minTimeout = Long.MAX_VALUE;
+		for(Short key : this.packetTimeouts.keySet()) {
+			if (this.packetTimeouts.get(key) < minTimeout)
+				minTimeout = this.packetTimeouts.get(key);
+		}
+		return minTimeout;
+	}
+	
+	private void resendTimeoutPackets(byte[] fileData) throws Exception{
+		DatagramPacket sendPacket;
+		for(Short key : this.packetTimeouts.keySet()) {
+			if (this.packetTimeouts.get(key) <= System.currentTimeMillis()) {
+				sendPacket = constructPacket(fileData, key);
+				this.socket.send(sendPacket);
+				this.packetTimeouts.put(key, System.currentTimeMillis() + this.retryTimeout);
+			}
 		}
 	}
 	
@@ -89,9 +120,9 @@ public class Sender4 {
 	}
 	
 	private DatagramPacket constructPacket(byte[] data, short packetNum) throws Exception {
-		byte[] packetData = new byte[DATA_SIZE];
 		int beginning = packetNum * MESSAGE_SIZE;
 		int end = beginning + Math.min(MESSAGE_SIZE, data.length - beginning);
+		byte[] packetData = new byte[end - beginning + DATA_SIZE - MESSAGE_SIZE];
 		// Adding the main content:
 		copyRange(packetData, 3, data, beginning, end);
 		// Adding headers that encode the end of file and the packet sequence number:
@@ -99,7 +130,6 @@ public class Sender4 {
 		encodeEndOfFile(packetData, (end == data.length));
 		return new DatagramPacket(packetData, packetData.length, InetAddress.getByName("localhost"), this.portNumber);
 	}
-	
 	
 	public static void encodeSeqNumber(byte[] message, short seqNum) {
 		// Encodes the sequence number to the first two bytes of the message:

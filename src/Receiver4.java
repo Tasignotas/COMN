@@ -11,14 +11,14 @@ public class Receiver4 {
 	
 	private DatagramSocket socket;
 	private int portNumber, windowSize;
-	private HashMap<Integer, byte[]> packetDataBuf;
+	private HashMap<Short, DatagramPacket> packetDataBuf;
 	private short base;
 	
 	public Receiver4(int portNum, int windowSize) throws Exception {
 		this.portNumber = portNum;
 		this.windowSize = windowSize;
 		this.base = 0;
-		this.packetDataBuf = new HashMap<Integer, byte[]>();
+		this.packetDataBuf = new HashMap<Short, DatagramPacket>();
 		this.socket = new DatagramSocket(this.portNumber);
 	}
 	
@@ -27,29 +27,31 @@ public class Receiver4 {
 		boolean endOfFile = false;
 		FileOutputStream out = new FileOutputStream(fileName);
 		// We wait for a packet until the sender tells us that it's the end:
-		while (!endOfFile) {
+		while (true) {
 			receiveNewPackets();
 			while (this.packetDataBuf.containsKey(this.base)) {
-				out.write(Arrays.copyOfRange(this.packetDataBuf.get(this.base), Sender2.DATA_SIZE - Sender2.MESSAGE_SIZE, this.packetDataBuf.get(this.base).length));
+				endOfFile = Sender4.decodeEndOfFile(this.packetDataBuf.get(this.base).getData());
+				out.write(Arrays.copyOfRange(this.packetDataBuf.get(this.base).getData(), Sender4.DATA_SIZE - Sender4.MESSAGE_SIZE, this.packetDataBuf.get(this.base).getLength()));
 				this.base++;
 			}
-			endOfFile = Sender2.decodeEndOfFile(this.packetDataBuf.get(this.base - 1));
+			if (endOfFile) {
+				out.close();
+			}
 		}
-		this.socket.close();
-		out.close();
 	}
 		
 	private void receiveNewPackets() throws Exception {
 		byte[] tempBuf;
 		short seqNum;
 		while (true) {
-			tempBuf = new byte[Sender2.DATA_SIZE];
+			tempBuf = new byte[Sender4.DATA_SIZE];
 			DatagramPacket receivedPacket = new DatagramPacket(tempBuf, tempBuf.length);
 			this.socket.receive(receivedPacket);
-			seqNum = Sender2.decodeSeqNumber(receivedPacket.getData());
-			if (seqNum >= (this.base - this.windowSize) && seqNum < (this.base + this.windowSize))
+			seqNum = Sender4.decodeSeqNumber(receivedPacket.getData());
+			if ((seqNum >= (this.base - this.windowSize)) && (seqNum < (this.base + this.windowSize))) {
 				sendAck(seqNum, receivedPacket.getPort());
-				this.packetDataBuf.put((int) seqNum, receivedPacket.getData());
+				this.packetDataBuf.put(seqNum, receivedPacket);
+			}
 			if (seqNum == this.base)
 				break;
 		}
