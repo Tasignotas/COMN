@@ -7,8 +7,8 @@ import java.net.*;
 
 public class Sender3 {
 
-	public final static int DATA_SIZE = 1024; // The size of the entire data part of the packet
-	public final static int MESSAGE_SIZE = 1021; // The size of the meaningful part of the data part
+	public final static int DATA_SIZE = 1027; // The size of the entire data part of the packet
+	public final static int MESSAGE_SIZE = 1024; // The size of the meaningful part of the data part
 	public final static int FEEDBACK_SIZE = 2; // The size of the feedback (Ack/Nak) message
 
 	private DatagramSocket socket;
@@ -34,7 +34,7 @@ public class Sender3 {
 	    	sendPackets(this.nextSeqNum, end, fileData);
 		} while (this.base * MESSAGE_SIZE < fileData.length);
 	    long endTime = System.currentTimeMillis();
-	    System.out.println("The transfer speed is: " + ((fileData.length * 1024) / ((startTime - endTime) * 1000)) + "kB/s");
+	    System.out.println("The transfer speed is: " + ((fileData.length / 1024) / ((endTime - startTime) / 1000)) + "kB/s");
 		this.socket.close();
 	}
 	
@@ -89,9 +89,9 @@ public class Sender3 {
 	}
 	
 	private DatagramPacket constructPacket(byte[] data, short packetNum) throws Exception {
-		byte[] packetData = new byte[DATA_SIZE];
 		int beginning = packetNum * MESSAGE_SIZE;
 		int end = beginning + Math.min(MESSAGE_SIZE, data.length - beginning);
+		byte[] packetData = new byte[end - beginning + DATA_SIZE - MESSAGE_SIZE];
 		// Adding the main content:
 		copyRange(packetData, 3, data, beginning, end);
 		// Adding headers that encode the end of file and the packet sequence number:
