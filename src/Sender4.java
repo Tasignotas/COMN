@@ -55,6 +55,7 @@ public class Sender4 {
 		for (short x = beg; x < end; x++) {
 			sendPacket = constructPacket(fileData, x);
 			this.socket.send(sendPacket);
+			Thread.sleep(1);
 			// Recording the send time:
 			this.packetTimeouts.put(x, System.currentTimeMillis() + this.retryTimeout);
 			this.nextSeqNum++;
