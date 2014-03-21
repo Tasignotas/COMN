@@ -45,7 +45,7 @@ public class Sender4 {
 	private void sendPackets(short beg, short end, byte[] fileData) throws Exception {
 		DatagramPacket sendPacket;
 		byte[] buf;
-		long currentTime, timeout;
+		long currentTime, earliestTimeout;
 		int timeLeft;
 		short decodedNum;
 		DatagramPacket receivedPacket;
@@ -60,16 +60,11 @@ public class Sender4 {
 			this.nextSeqNum++;
 		}
 		try {
-			/* For large window sizes the regular algorithm of resending all of the packets
-			 * that have timed out does not work, because almost always there is a packet that needs to be resent.
-			 * Therefore, the sender socket gets congested with all of the acks that are not processed
-			 * and the selective repeat is very slow. Thus, we resend all of the packets that have to be resent
-			 * every 5 milliseconds, and during the 5 milliseconds we process the queue of the acks.
-			 * This proves to be working very well.
-			 */
+			// We get the earliest timeout, because that's the maximum amount of time
+			// we should be waiting for an Ack without resending:
+			earliestTimeout = getEarliestTimeout();
 			currentTime = System.currentTimeMillis();
-			timeout = currentTime + 10;
-			timeLeft = (int) (timeout - currentTime);
+			timeLeft = (int) (earliestTimeout - currentTime);
 			while (timeLeft > 0) {
 				this.socket.setSoTimeout(timeLeft);
 				this.socket.receive(receivedPacket);
@@ -84,14 +79,24 @@ public class Sender4 {
 					// We return from the method so that we could send some new packets:
 					return;
 				}
+				earliestTimeout = getEarliestTimeout();
 				currentTime = System.currentTimeMillis();
-				timeLeft = (int) (timeout - currentTime);
+				timeLeft = (int) (earliestTimeout - currentTime);
 			}
 			resendTimeoutPackets(fileData);
 		}
 		catch (SocketTimeoutException e) {
 			resendTimeoutPackets(fileData);
 		}
+	}
+	
+	private long getEarliestTimeout() {
+		Long minTimeout = Long.MAX_VALUE;
+		for(Short key : this.packetTimeouts.keySet()) {
+			if (this.packetTimeouts.get(key) < minTimeout)
+				minTimeout = this.packetTimeouts.get(key);
+		}
+		return minTimeout;
 	}
 	
 	private void resendTimeoutPackets(byte[] fileData) throws Exception{
