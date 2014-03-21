@@ -45,7 +45,7 @@ public class Sender4 {
 	private void sendPackets(short beg, short end, byte[] fileData) throws Exception {
 		DatagramPacket sendPacket;
 		byte[] buf;
-		long currentTime, earliestTimeout;
+		long currentTime, timeout;
 		int timeLeft;
 		short decodedNum;
 		DatagramPacket receivedPacket;
@@ -60,11 +60,16 @@ public class Sender4 {
 			this.nextSeqNum++;
 		}
 		try {
-			// We get the earliest timeout, because that's the maximum amount of time
-			// we should be waiting for an Ack without resending:
+			/* For large window sizes the regular algorithm of resending all of the packets
+			 * that have timed out does not work, because almost always there is a packet that needs to be resent.
+			 * Therefore, the sender socket gets congested with all of the acks that are not processed
+			 * and the selective repeat is very slow. Thus, we resend all of the packets that have to be resent
+			 * every 5 milliseconds, and during the 5 milliseconds we process the queue of the acks.
+			 * This proves to be working very well.
+			 */
 			currentTime = System.currentTimeMillis();
-			earliestTimeout = currentTime + 5;
-			timeLeft = (int) (earliestTimeout - currentTime);
+			timeout = currentTime + 5;
+			timeLeft = (int) (timeout - currentTime);
 			while (timeLeft > 0) {
 				this.socket.setSoTimeout(timeLeft);
 				this.socket.receive(receivedPacket);
@@ -80,7 +85,7 @@ public class Sender4 {
 					return;
 				}
 				currentTime = System.currentTimeMillis();
-				timeLeft = (int) (earliestTimeout - currentTime);
+				timeLeft = (int) (timeout - currentTime);
 			}
 			resendTimeoutPackets(fileData);
 		}
