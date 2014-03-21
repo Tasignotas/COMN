@@ -63,7 +63,7 @@ public class Sender4 {
 			// We get the earliest timeout, because that's the maximum amount of time
 			// we should be waiting for an Ack without resending:
 			currentTime = System.currentTimeMillis();
-			earliestTimeout = currentTime + 5;
+			earliestTimeout = currentTime + 2;
 			timeLeft = (int) (earliestTimeout - currentTime);
 			while (timeLeft > 0) {
 				this.socket.setSoTimeout(timeLeft);
