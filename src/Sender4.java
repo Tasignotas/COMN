@@ -50,13 +50,14 @@ public class Sender4 {
 		short decodedNum;
 		DatagramPacket receivedPacket;
 		buf = new byte[FEEDBACK_SIZE];
+		currentTime = System.currentTimeMillis();
 		receivedPacket = new DatagramPacket(buf, buf.length);
 		// Sending all of the new packets:
 		for (short x = beg; x < end; x++) {
 			sendPacket = constructPacket(fileData, x);
 			this.socket.send(sendPacket);
 			// Recording the send time:
-			this.packetTimeouts.put(x, System.currentTimeMillis() + this.retryTimeout);
+			this.packetTimeouts.put(x, currentTime + this.retryTimeout);
 			this.nextSeqNum++;
 		}
 		try {
@@ -102,11 +103,12 @@ public class Sender4 {
 	private void resendTimeoutPackets(byte[] fileData) throws Exception{
 		// We resend each un-ack'ed packet if it timed out:
 		DatagramPacket sendPacket;
+		long currentTime = System.currentTimeMillis();
 		for(Short key : this.packetTimeouts.keySet()) {
-			if (this.packetTimeouts.get(key) <= System.currentTimeMillis()) {
+			if (this.packetTimeouts.get(key) <= currentTime) {
 				sendPacket = constructPacket(fileData, key);
 				this.socket.send(sendPacket);
-				this.packetTimeouts.put(key, System.currentTimeMillis() + this.retryTimeout);
+				this.packetTimeouts.put(key, currentTime + this.retryTimeout);
 			}
 		}
 	}
