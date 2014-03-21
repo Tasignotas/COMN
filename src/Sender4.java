@@ -63,7 +63,7 @@ public class Sender4 {
 			// We get the earliest timeout, because that's the maximum amount of time
 			// we should be waiting for an Ack without resending:
 			currentTime = System.currentTimeMillis();
-			earliestTimeout = currentTime + 4;
+			earliestTimeout = currentTime + 5;
 			timeLeft = (int) (earliestTimeout - currentTime);
 			while (timeLeft > 0) {
 				this.socket.setSoTimeout(timeLeft);
@@ -87,15 +87,6 @@ public class Sender4 {
 		catch (SocketTimeoutException e) {
 			resendTimeoutPackets(fileData);
 		}
-	}
-	
-	private long getEarliestTimeout() {
-		Long minTimeout = Long.MAX_VALUE;
-		for(Short key : this.packetTimeouts.keySet()) {
-			if (this.packetTimeouts.get(key) < minTimeout)
-				minTimeout = this.packetTimeouts.get(key);
-		}
-		return minTimeout;
 	}
 	
 	private void resendTimeoutPackets(byte[] fileData) throws Exception{
