@@ -50,21 +50,20 @@ public class Sender4 {
 		short decodedNum;
 		DatagramPacket receivedPacket;
 		buf = new byte[FEEDBACK_SIZE];
-		currentTime = System.currentTimeMillis();
 		receivedPacket = new DatagramPacket(buf, buf.length);
 		// Sending all of the new packets:
 		for (short x = beg; x < end; x++) {
 			sendPacket = constructPacket(fileData, x);
 			this.socket.send(sendPacket);
 			// Recording the send time:
-			this.packetTimeouts.put(x, currentTime + this.retryTimeout);
+			this.packetTimeouts.put(x, System.currentTimeMillis() + this.retryTimeout);
 			this.nextSeqNum++;
 		}
 		try {
 			// We get the earliest timeout, because that's the maximum amount of time
 			// we should be waiting for an Ack without resending:
-			earliestTimeout = getEarliestTimeout();
 			currentTime = System.currentTimeMillis();
+			earliestTimeout = currentTime + 5;
 			timeLeft = (int) (earliestTimeout - currentTime);
 			while (timeLeft > 0) {
 				this.socket.setSoTimeout(timeLeft);
@@ -80,7 +79,6 @@ public class Sender4 {
 					// We return from the method so that we could send some new packets:
 					return;
 				}
-				earliestTimeout = getEarliestTimeout();
 				currentTime = System.currentTimeMillis();
 				timeLeft = (int) (earliestTimeout - currentTime);
 			}
@@ -103,12 +101,11 @@ public class Sender4 {
 	private void resendTimeoutPackets(byte[] fileData) throws Exception{
 		// We resend each un-ack'ed packet if it timed out:
 		DatagramPacket sendPacket;
-		long currentTime = System.currentTimeMillis();
 		for(Short key : this.packetTimeouts.keySet()) {
-			if (this.packetTimeouts.get(key) <= currentTime) {
+			if (this.packetTimeouts.get(key) <= System.currentTimeMillis()) {
 				sendPacket = constructPacket(fileData, key);
 				this.socket.send(sendPacket);
-				this.packetTimeouts.put(key, currentTime + this.retryTimeout);
+				this.packetTimeouts.put(key, System.currentTimeMillis() + this.retryTimeout);
 			}
 		}
 	}
