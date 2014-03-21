@@ -87,11 +87,12 @@ public class Sender2 {
 						return;
 					timeLeft = (int) (startTime + this.retryTimeout - System.currentTimeMillis());
 				}
+				this.retransmissions++;
 			}
 			catch (SocketTimeoutException e) {
+				this.retransmissions++;
 				continue;
 			}
-			this.retransmissions++;
 		} while (true);
 	}
 	
