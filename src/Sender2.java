@@ -89,9 +89,9 @@ public class Sender2 {
 				}
 			}
 			catch (SocketTimeoutException e) {
-				this.retransmissions++;
 				continue;
 			}
+			this.retransmissions++;
 		} while (true);
 	}
 	
